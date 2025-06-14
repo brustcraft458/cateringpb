@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { Storage } from '@ionic/storage-angular'; // Import Ionic Storage
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
@@ -9,6 +10,7 @@ export class AuthService {
   private _isLoggedIn = new BehaviorSubject<boolean>(false);
   private _token = new BehaviorSubject<string | null>(null);
   private _user = new BehaviorSubject<any>(null); // To store user data
+  private apiUrl = environment.apiUrl;
 
   // Public observables for components to subscribe to
   get isLoggedIn() {
