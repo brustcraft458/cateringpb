@@ -1,7 +1,9 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { tap } from 'rxjs/operators'; // Import tap for side effects
 import { Storage } from '@ionic/storage-angular'; // Import Ionic Storage
 import { environment } from '../../environments/environment';
+import { HttpClient } from '@angular/common/http'; // Import HttpClient
 
 @Injectable({
   providedIn: 'root'
@@ -9,10 +11,9 @@ import { environment } from '../../environments/environment';
 export class AuthService {
   private _isLoggedIn = new BehaviorSubject<boolean>(false);
   private _token = new BehaviorSubject<string | null>(null);
-  private _user = new BehaviorSubject<any>(null); // To store user data
-  private apiUrl = environment.apiUrl;
+  private _user = new BehaviorSubject<any>(null);
+  private _apiUrl = environment.apiUrl;
 
-  // Public observables for components to subscribe to
   get isLoggedIn() {
     return this._isLoggedIn.asObservable();
   }
@@ -25,14 +26,12 @@ export class AuthService {
     return this._user.asObservable();
   }
 
-  constructor(private storage: Storage) {
-    this.init(); // Initialize storage and load any existing data
+  constructor(private storage: Storage, private http: HttpClient) { // Inject HttpClient
+    this.init();
   }
 
   async init() {
-    // Ensure the storage is created/ready
     await this.storage.create();
-    // Load initial data from storage
     await this.loadInitialData();
   }
 
@@ -41,17 +40,16 @@ export class AuthService {
     const user = await this.storage.get('currentUser');
     if (token) {
       this._token.next(token);
-      this._isLoggedIn.next(true); // Set login status if token exists
+      this._isLoggedIn.next(true);
     }
     if (user) {
-      this._user.next(user); // Set user data if exists
+      this._user.next(user);
     }
   }
 
   async setLoggedIn(value: boolean) {
     this._isLoggedIn.next(value);
     if (!value) {
-      // Clear stored data if logging out
       await this.storage.remove('authToken');
       await this.storage.remove('currentUser');
       this._token.next(null);
@@ -61,18 +59,30 @@ export class AuthService {
 
   async setToken(token: string) {
     this._token.next(token);
-    await this.storage.set('authToken', token); // Store token in local storage
+    await this.storage.set('authToken', token);
   }
 
   async setUser(user: any) {
     this._user.next(user);
-    await this.storage.set('currentUser', user); // Store user data in local storage
+    await this.storage.set('currentUser', user);
+  }
+
+  // New login method in AuthService
+  login(credentials: { email: string, password: string }): Observable<any> {
+    const apiUrl = this._apiUrl + '/login'; // Your Laravel API login endpoint
+
+    return this.http.post(apiUrl, credentials).pipe(
+      tap((response: any) => {
+        if (response && response.token) {
+          this.setLoggedIn(true);
+          this.setToken(response.token);
+          this.setUser(response.user);
+        }
+      })
+    );
   }
 
   async logout() {
-    // Perform local logout
     await this.setLoggedIn(false);
-    // You could optionally send a request to your Laravel API's /logout endpoint here
-    // For example: this.http.post('http://localhost:8000/api/logout', {}, { headers: { 'Authorization': `Bearer ${token}` } }).subscribe();
   }
 }
