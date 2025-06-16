@@ -21,6 +21,10 @@ export class QrCodePage implements OnInit, AfterViewInit {
   ngOnInit() {
   }
 
+  ionViewWillEnter() {
+    
+  }
+
   ionViewWillLeave() {
     console.log('destroyy leave')
     clearInterval(this.qrTask);

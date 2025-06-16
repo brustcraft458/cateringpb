@@ -18,9 +18,10 @@ export class ProfilePage implements OnInit {
     private router: Router
   ) { }
 
-  async ngOnInit() {
-    // In a real application, you would fetch this data from an API.
-    // For this example, we'll use the provided JSON directly.
+  ngOnInit() {
+  }
+
+  async ionViewWillEnter() {
     let user = await this.authService.getUser();
     this.user = user;
   }

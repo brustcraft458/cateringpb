@@ -15,7 +15,10 @@ export class HomePage {
     private router: Router
   ) { }
 
-  async ngOnInit() {
+  ngOnInit() {
+  }
+
+  async ionViewWillEnter() {
     let user = await this.authService.getUser();
     console.log(user)
   }
