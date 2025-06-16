@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
-import { AuthService } from '../services/auth.service'; 
+import { AuthService } from '../services/auth.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-home',
@@ -10,11 +11,16 @@ import { AuthService } from '../services/auth.service';
 export class HomePage {
 
   constructor(
-    private authService: AuthService
+    private authService: AuthService,
+    private router: Router
   ) { }
 
   async ngOnInit() {
     let user = await this.authService.getUser();
     console.log(user)
+  }
+
+  navigateTo(path: string) {
+    this.router.navigateByUrl(path);
   }
 }

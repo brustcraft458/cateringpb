@@ -1,0 +1,97 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>User Profile</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <div *ngIf="user" class="profile-container">
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>{{ user.name }}</ion-card-title>
+        <ion-card-subtitle>{{ user.email }}</ion-card-subtitle>
+      </ion-card-header>
+
+      <ion-card-content>
+        <ion-list lines="none">
+          <ion-item>
+            <ion-label>
+              <h2>User ID:</h2>
+              <p>{{ user.id }}</p>
+            </ion-label>
+          </ion-item>
+
+          <ion-item>
+            <ion-label>
+              <h2>Email Verified:</h2>
+              <p>{{ user.email_verified_at ? 'Yes' : 'No' }}</p>
+            </ion-label>
+          </ion-item>
+
+          <ion-item>
+            <ion-label>
+              <h2>Member Since:</h2>
+              <p>{{ formatDate(user.created_at) }}</p>
+            </ion-label>
+          </ion-item>
+
+          <ion-item>
+            <ion-label>
+              <h2>Last Updated:</h2>
+              <p>{{ formatDate(user.updated_at) }}</p>
+            </ion-label>
+          </ion-item>
+
+          <ion-item>
+            <ion-label>
+              <h2>Roles:</h2>
+              <p>{{ getRoleNames() }}</p>
+            </ion-label>
+          </ion-item>
+
+          <ion-item *ngIf="user.karyawan">
+            <ion-label>
+              <h2>Karyawan Details:</h2>
+              <p>
+                {{ user.karyawan | json }}
+              </p>
+            </ion-label>
+          </ion-item>
+        </ion-list>
+      </ion-card-content>
+    </ion-card>
+
+    <ion-button expand="block" color="danger" class="ion-margin-top">
+      Logout
+      <ion-icon slot="end" name="log-out"></ion-icon>
+    </ion-button>
+
+  </div>
+
+  <div *ngIf="!user" class="ion-text-center ion-padding">
+    <p>Loading user data...</p>
+  </div>
+</ion-content>
+
+<ion-footer>
+  <ion-toolbar>
+    <ion-tabs>
+      <ion-tab-bar slot="bottom">
+        <ion-tab-button (click)="navigateTo('/home')">
+          <ion-icon name="home"></ion-icon>
+          <ion-label>Home</ion-label>
+        </ion-tab-button>
+
+        <ion-tab-button (click)="navigateTo('/qr-code')">
+          <ion-icon name="qr-code"></ion-icon>
+          <ion-label>QR Code</ion-label>
+        </ion-tab-button>
+
+        <ion-tab-button (click)="navigateTo('/profile')">
+          <ion-icon name="person"></ion-icon>
+          <ion-label>Profile</ion-label>
+        </ion-tab-button>
+      </ion-tab-bar>
+    </ion-tabs>
+  </ion-toolbar>
+</ion-footer>
