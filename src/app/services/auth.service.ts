@@ -1,29 +1,36 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { tap } from 'rxjs/operators'; // Import tap for side effects
+import { firstValueFrom } from 'rxjs';
 import { Storage } from '@ionic/storage-angular'; // Import Ionic Storage
 import { environment } from '../../environments/environment';
-import { HttpClient } from '@angular/common/http'; // Import HttpClient
+import { HttpClient, HttpHeaders } from '@angular/common/http'; // Import HttpClient
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private _isLoggedIn = new BehaviorSubject<boolean>(false);
-  private _token = new BehaviorSubject<string | null>(null);
-  private _user = new BehaviorSubject<any>(null);
-  private _apiUrl = environment.apiUrl;
+  private _isLoggedIn = false;
+  private _token: string | null = null;
+  private _apiUrl: string = environment.apiUrl;
 
-  get isLoggedIn() {
-    return this._isLoggedIn.asObservable();
+  async isLoggedIn() {
+    await this.init();
+    return this._isLoggedIn;
   }
 
-  get token() {
-    return this._token.asObservable();
+  async getToken() {
+    await this.init();
+    return this._token;
   }
 
-  get user() {
-    return this._user.asObservable();
+  async getUser() {
+    await this.init();
+
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${this._token}`
+    });
+    return firstValueFrom(this.http.get<any>(`${this._apiUrl}/user`, { headers: headers }));
   }
 
   constructor(private storage: Storage, private http: HttpClient) { // Inject HttpClient
@@ -31,54 +38,47 @@ export class AuthService {
   }
 
   async init() {
+    if (this._token) {
+      return;
+    }
+
     await this.storage.create();
     await this.loadInitialData();
   }
 
   private async loadInitialData() {
     const token = await this.storage.get('authToken');
-    const user = await this.storage.get('currentUser');
+    console.log('storage: ' + token)
     if (token) {
-      this._token.next(token);
-      this._isLoggedIn.next(true);
-    }
-    if (user) {
-      this._user.next(user);
+      this._token = token;
+      this._isLoggedIn = true;
     }
   }
 
   async setLoggedIn(value: boolean) {
-    this._isLoggedIn.next(value);
+    this._isLoggedIn = value;
     if (!value) {
       await this.storage.remove('authToken');
-      await this.storage.remove('currentUser');
-      this._token.next(null);
-      this._user.next(null);
+      this._token = null;
     }
   }
 
   async setToken(token: string) {
-    this._token.next(token);
+    this._token = token;
     await this.storage.set('authToken', token);
   }
 
-  async setUser(user: any) {
-    this._user.next(user);
-    await this.storage.set('currentUser', user);
-  }
-
   // New login method in AuthService
-  login(credentials: { email: string, password: string }): Observable<any> {
-    const apiUrl = this._apiUrl + '/login'; // Your Laravel API login endpoint
-
-    return this.http.post(apiUrl, credentials).pipe(
-      tap((response: any) => {
-        if (response && response.token) {
-          this.setLoggedIn(true);
-          this.setToken(response.token);
-          this.setUser(response.user);
-        }
-      })
+  login(credentials: { email: string, password: string }) {
+    return firstValueFrom(
+      this.http.post(`${this._apiUrl}/login`, credentials).pipe(
+        tap((response: any) => {
+          if (response && response.token) {
+            this.setLoggedIn(true);
+            this.setToken(response.token);
+          }
+        })
+      )
     );
   }
 
