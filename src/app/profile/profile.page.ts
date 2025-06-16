@@ -10,7 +10,6 @@ import { Router } from '@angular/router';
 })
 export class ProfilePage implements OnInit {
 
-  // Define an interface for better type safety
   user: User | undefined;
 
   constructor(
@@ -23,23 +22,27 @@ export class ProfilePage implements OnInit {
 
   async ionViewWillEnter() {
     let user = await this.authService.getUser();
+    
+    // Cek jika 'karyawan' adalah array dan ambil elemen pertamanya
+    if (user && Array.isArray(user.karyawan) && user.karyawan.length > 0) {
+      user.karyawan = user.karyawan[0];
+    }
+    
     this.user = user;
   }
 
-  // Helper to format dates if needed (optional)
   formatDate(dateString: string | null): string {
     if (!dateString) {
       return 'N/A';
     }
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
+    return date.toLocaleDateString('id-ID', { // Menggunakan format Indonesia
       year: 'numeric',
       month: 'long',
       day: 'numeric'
     });
   }
 
-  // Helper to get role names
   getRoleNames(): string {
     return this.user?.roles.map(role => role.name).join(', ') || 'No roles';
   }
@@ -49,7 +52,7 @@ export class ProfilePage implements OnInit {
   }
 }
 
-// Interfaces to strongly type your data
+// Interfaces untuk tipe data yang lebih aman
 interface Role {
   id: number;
   name: string;
@@ -63,6 +66,22 @@ interface Role {
   };
 }
 
+interface Karyawan {
+    id: number;
+    user_id: number;
+    divisi_id: number;
+    shift_id: number;
+    nip: string;
+    nama_lengkap: string;
+    email: string;
+    phone: string;
+    status_kerja: string;
+    tanggal_bergabung: string;
+    berhak_konsumsi: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
 interface User {
   id: number;
   name: string;
@@ -71,5 +90,5 @@ interface User {
   created_at: string;
   updated_at: string;
   roles: Role[];
-  karyawan: any; // You might want to define a more specific type for 'karyawan' if it's not always null
+  karyawan: Karyawan | null; // Tipe diubah menjadi objek Karyawan
 }
