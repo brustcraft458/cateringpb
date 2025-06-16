@@ -1,5 +1,6 @@
 import { Component, OnInit, AfterViewInit } from '@angular/core';
 import { Router } from '@angular/router';
+import { FoodService } from '../services/food.service';
 import * as QRCode from 'qrcode';
 
 @Component({
@@ -9,31 +10,39 @@ import * as QRCode from 'qrcode';
   standalone: false
 })
 export class QrCodePage implements OnInit, AfterViewInit {
-  qrData: string = 'https://www.google.com/ionic'; // Data
   qrSize: number = 256;
+  qrTask: any;
 
   constructor(
-    private router: Router
+    private router: Router,
+    private foodService: FoodService
   ) { }
 
   ngOnInit() {
   }
 
-  ngAfterViewInit() {
-    const canvas = document.querySelector('#qrCodeCanvas') as HTMLCanvasElement;
-
-    if (canvas) {
-      this.generateQRCode(canvas);
-    } else {
-      console.error('QR Code canvas element not found with document.querySelector!');
-    }
+  ionViewWillLeave() {
+    console.log('destroyy leave')
+    clearInterval(this.qrTask);
   }
 
-  generateQRCode(canvas: HTMLCanvasElement) {
+  ngAfterViewInit() {
+    this.generateQRCode();
+
+    this.qrTask = setInterval(async () => {
+      console.log('QR code has expired, refreshh');
+      await this.generateQRCode();
+    }, 13000);
+  }
+
+  async generateQRCode() {
+    const canvas = document.querySelector('#qrCodeCanvas') as HTMLCanvasElement;
     canvas.width = this.qrSize;
     canvas.height = this.qrSize;
 
-    QRCode.toCanvas(canvas, this.qrData, {
+    let response = await this.foodService.getQrCode();
+
+    QRCode.toCanvas(canvas, response.qr_token, {
       width: this.qrSize,
       color: {
         dark: '#000000',
