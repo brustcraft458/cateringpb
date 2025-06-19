@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { LoadingController, AlertController, ToastController } from '@ionic/angular';
+import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../services/auth.service'; // Import your Auth Service
 
 @Component({
@@ -23,8 +24,7 @@ export class LoginPagePage implements OnInit {
     private authService: AuthService // Inject AuthService
   ) { }
 
-  ngOnInit() {
-  }
+  ngOnInit() {}
 
   async login() {
     this.errorMessage = null; // Clear previous error message
@@ -40,19 +40,32 @@ export class LoginPagePage implements OnInit {
     await loading.present();
 
     try {
-      let data = await this.authService.login({ email: this.email, password: this.password })
-      if (data) {
-        await loading.dismiss();
-        // The authService.login method already handles setting the token and user
-        const toast = await this.toastController.create({
-          message: 'Login successful!',
-          duration: 2000,
-          color: 'success'
-        });
-        toast.present();
-        this.router.navigateByUrl('/home');
-      }
+      // Panggil service login. Gunakan firstValueFrom untuk mengubah Observable menjadi Promise
+      await firstValueFrom(this.authService.login({ email: this.email, password: this.password }));
       
+      // Setelah login berhasil, dismiss loading
+      await loading.dismiss();
+
+      // --- INI BAGIAN YANG DIUBAH ---
+      // Ambil role terakhir dari AuthService (BehaviorSubject)
+      let role: string | null = null;
+      this.authService.userRole$.subscribe(r => role = r);
+      console.log('Login successful for role:', role);
+
+      if (role === 'hrga') {
+        // Jika role adalah HRGA, arahkan ke dashboard HRGA
+        this.router.navigateByUrl('/hrga/dashboard', { replaceUrl: true });
+      } else if (role === 'karyawan') {
+        // Jika role adalah Karyawan, arahkan ke tab karyawan
+        this.router.navigateByUrl('/tabs/home', { replaceUrl: true });
+      } else {
+        // Fallback jika role tidak dikenali
+        this.errorMessage = 'Role pengguna tidak dikenali.';
+        this.presentAlert('Login Error', this.errorMessage);
+        this.authService.logout(); // Logout jika role tidak valid
+      }
+      // --- BATAS PERUBAHAN ---
+
     } catch (err: any) {
       await loading.dismiss();
       console.error('Login Error:', err);

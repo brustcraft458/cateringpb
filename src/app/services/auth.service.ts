@@ -1,10 +1,11 @@
 import { Injectable } from '@angular/core';
+// Tambahkan BehaviorSubject
 import { BehaviorSubject, Observable } from 'rxjs';
-import { tap } from 'rxjs/operators'; // Import tap for side effects
+import { tap } from 'rxjs/operators';
 import { firstValueFrom } from 'rxjs';
-import { Storage } from '@ionic/storage-angular'; // Import Ionic Storage
+import { Storage } from '@ionic/storage-angular';
 import { environment } from '../../environments/environment';
-import { HttpClient, HttpHeaders } from '@angular/common/http'; // Import HttpClient
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 
 @Injectable({
   providedIn: 'root'
@@ -14,30 +15,76 @@ export class AuthService {
   private _token: string | null = null;
   private _apiUrl: string = environment.apiUrl;
 
-  async isLoggedIn() {
+  // --- TAMBAHKAN INI ---
+  // BehaviorSubject untuk menyimpan role, nilai awalnya null
+  private userRole = new BehaviorSubject<string | null>(null);
+  // Expose role sebagai Observable agar komponen lain bisa subscribe
+  public userRole$: Observable<string | null> = this.userRole.asObservable();
+  // --- BATAS PENAMBAHAN ---
+
+  constructor(private storage: Storage, private http: HttpClient) {
+    this.init();
+  }
+
+  async isLoggedIn(): Promise<boolean> {
     await this.init();
     return this._isLoggedIn;
   }
 
-  async getToken() {
+  async getToken(): Promise<string | null> {
     await this.init();
     return this._token;
   }
 
-  async getUser() {
+  async getUser(): Promise<any> {
     await this.init();
 
     const headers = new HttpHeaders({
       'Authorization': `Bearer ${this._token}`
     });
-    return firstValueFrom(this.http.get<any>(`${this._apiUrl}/user`, { headers: headers }));
+    return firstValueFrom(this.http.get<any>(`${this._apiUrl}/user`, { headers }));
   }
 
-  constructor(private storage: Storage, private http: HttpClient) { // Inject HttpClient
-    this.init();
+  // Modifikasi login method untuk mendapatkan dan menyimpan role
+  login(credentials: { email: string; password: string; }) {
+    return this.http.post<any>(`${this._apiUrl}/login`, credentials).pipe(
+      tap(async (res) => {
+        if (res.token && res.user) {
+          this._token = res.token;
+          this._isLoggedIn = true;
+
+          // Ekstrak role dari respons API
+          const role = res.user.role; 
+          // =======================================================
+
+          // Tambahkan log ini untuk memastikan role terbaca dengan benar
+          console.log('Role from API response:', role); 
+
+          this.userRole.next(role); // Set role ke BehaviorSubject
+
+          // Simpan token dan role ke storage
+          await this.storage.set('authToken', res.token);
+          await this.storage.set('userRole', role);
+        }
+      })
+    );
   }
 
-  async init() {
+  async logout(): Promise<void> {
+    // ... (request logout ke API jika ada) ...
+
+    // Hapus token dan role dari storage
+    await this.storage.remove('authToken');
+    await this.storage.remove('userRole');
+
+    this._token = null;
+    this._isLoggedIn = false;
+    this.userRole.next(null); // Reset role
+    // Navigasi ke login page bisa dilakukan di komponen
+  }
+
+  // Inisialisasi storage dan load data awal
+  private async init(): Promise<void> {
     if (this._token) {
       return;
     }
@@ -46,43 +93,23 @@ export class AuthService {
     await this.loadInitialData();
   }
 
-  private async loadInitialData() {
+  private async loadInitialData(): Promise<void> {
     const token = await this.storage.get('authToken');
-    console.log('storage: ' + token)
+    // --- TAMBAHKAN INI ---
+    const role = await this.storage.get('userRole');
+    // --- BATAS PENAMBAHAN ---
+
+    console.log('storage token: ' + token);
+    console.log('storage role: ' + role);
+
     if (token) {
       this._token = token;
       this._isLoggedIn = true;
+      // --- TAMBAHKAN INI ---
+      if (role) {
+        this.userRole.next(role);
+      }
+      // --- BATAS PENAMBAHAN ---
     }
-  }
-
-  async setLoggedIn(value: boolean) {
-    this._isLoggedIn = value;
-    if (!value) {
-      await this.storage.remove('authToken');
-      this._token = null;
-    }
-  }
-
-  async setToken(token: string) {
-    this._token = token;
-    await this.storage.set('authToken', token);
-  }
-
-  // New login method in AuthService
-  login(credentials: { email: string, password: string }) {
-    return firstValueFrom(
-      this.http.post(`${this._apiUrl}/login`, credentials).pipe(
-        tap((response: any) => {
-          if (response && response.token) {
-            this.setLoggedIn(true);
-            this.setToken(response.token);
-          }
-        })
-      )
-    );
-  }
-
-  async logout() {
-    await this.setLoggedIn(false);
   }
 }
